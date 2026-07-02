@@ -44,7 +44,7 @@ public class TourEventBroadcaster {
         emitter.onTimeout(() -> remove(tourId, emitter));
         emitter.onError(e -> remove(tourId, emitter));
 
-        log.debug("SSE registered: tourId={} total={}", tourId, list.size());
+        log.info("SSE registered: tourId={} total={}", tourId, list.size());
         return emitter;
     }
 
@@ -70,7 +70,9 @@ public class TourEventBroadcaster {
 
     private void broadcast(String tourId, String eventName, Object data) {
         List<SseEmitter> list = registry.get(tourId);
-        if (list == null || list.isEmpty()) return;
+        int count = (list == null) ? 0 : list.size();
+        log.info("SSE broadcast '{}' → tourId={} ({} emitter(s))", eventName, tourId, count);
+        if (count == 0) return;
 
         List<SseEmitter> dead = new ArrayList<>();
         for (SseEmitter emitter : list) {
@@ -79,12 +81,17 @@ public class TourEventBroadcaster {
                         .name(eventName)
                         .data(data, MediaType.APPLICATION_JSON));
             } catch (IOException e) {
+                log.warn("SSE send IOException tourId={}: {}", tourId, e.getMessage());
+                dead.add(emitter);
+            } catch (Exception e) {
+                // IllegalStateException when emitter is already completed, etc.
+                log.warn("SSE send error tourId={}: {}", tourId, e.getMessage());
                 dead.add(emitter);
             }
         }
         if (!dead.isEmpty()) {
             list.removeAll(dead);
-            log.debug("SSE removed {} dead emitters for tourId={}", dead.size(), tourId);
+            log.info("SSE removed {} dead emitter(s) for tourId={}", dead.size(), tourId);
         }
     }
 

@@ -39,13 +39,20 @@ public class ExeTourController {
     @PostMapping("/join")
     @Operation(summary = "Join an existing tour")
     public ResponseEntity<JoinTourResponse> joinTour(@Valid @RequestBody JoinTourRequest request) {
-        return ResponseEntity.ok(tourService.joinTour(request));
+        JoinTourResponse response = tourService.joinTour(request);
+        // Broadcast AFTER the @Transactional service method returns (transaction committed).
+        // This avoids a race where the push fires before the new member is visible in the DB.
+        broadcaster.broadcastMemberUpdate(response.tourId(), new MemberListResponse(response.members()));
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/end")
     @Operation(summary = "End a tour — leader only")
     public ResponseEntity<EndTourResponse> endTour(@Valid @RequestBody EndTourRequest request) {
-        return ResponseEntity.ok(tourService.endTour(request));
+        EndTourResponse response = tourService.endTour(request);
+        // Broadcast AFTER the @Transactional service method returns (transaction committed).
+        broadcaster.broadcastTourEnded(request.tourId());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{tourId}/members")
@@ -56,8 +63,9 @@ public class ExeTourController {
 
     /**
      * SSE endpoint — devices subscribe here after creating/joining a tour.
-     * Immediately sends the current member list on connect so reconnections
-     * also get fresh state. Subsequent pushes happen via TourEventBroadcaster.
+     * Register the emitter FIRST, then query current state. This ordering
+     * ensures we never miss a broadcast that fires between registration and
+     * the initial-state send (the duplicate is harmless; Android is idempotent).
      */
     @GetMapping(value = "/{tourId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Subscribe to tour events (SSE)",
@@ -68,11 +76,13 @@ public class ExeTourController {
         response.setHeader("Cache-Control", "no-cache, no-store");
         response.setHeader("Connection", "keep-alive");
 
-        MemberListResponse currentState = tourService.getMembers(tourId);
+        // Register FIRST so we cannot miss broadcasts that fire while we query the DB.
         SseEmitter emitter = broadcaster.register(tourId);
 
-        // Send current member list immediately so the subscriber is up to date
+        // Send current member list immediately so the subscriber is up to date.
+        // Queried AFTER registration — guarantees freshest committed state.
         try {
+            MemberListResponse currentState = tourService.getMembers(tourId);
             emitter.send(SseEmitter.event()
                     .name("member_update")
                     .data(currentState, MediaType.APPLICATION_JSON));
