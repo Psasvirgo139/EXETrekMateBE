@@ -9,6 +9,7 @@ import com.trekmate.exe.dto.response.JoinTourResponse;
 import com.trekmate.exe.dto.response.MemberListResponse;
 import com.trekmate.exe.service.ExeTourService;
 import com.trekmate.exe.sse.TourEventBroadcaster;
+import com.trekmate.exe.ws.TourWebSocketHandler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,7 +29,8 @@ import java.io.IOException;
 public class ExeTourController {
 
     private final ExeTourService tourService;
-    private final TourEventBroadcaster broadcaster;
+    private final TourEventBroadcaster broadcaster;   // SSE (kept for backward compat)
+    private final TourWebSocketHandler wsHandler;     // WebSocket (primary real-time channel)
 
     @PostMapping
     @Operation(summary = "Create a new tour")
@@ -40,9 +42,10 @@ public class ExeTourController {
     @Operation(summary = "Join an existing tour")
     public ResponseEntity<JoinTourResponse> joinTour(@Valid @RequestBody JoinTourRequest request) {
         JoinTourResponse response = tourService.joinTour(request);
-        // Broadcast AFTER the @Transactional service method returns (transaction committed).
-        // This avoids a race where the push fires before the new member is visible in the DB.
-        broadcaster.broadcastMemberUpdate(response.tourId(), new MemberListResponse(response.members()));
+        // Broadcast AFTER @Transactional commits — both SSE and WebSocket channels.
+        MemberListResponse memberList = new MemberListResponse(response.members());
+        broadcaster.broadcastMemberUpdate(response.tourId(), memberList);  // SSE
+        wsHandler.broadcastMemberUpdate(response.tourId(), memberList);    // WebSocket
         return ResponseEntity.ok(response);
     }
 
@@ -50,8 +53,9 @@ public class ExeTourController {
     @Operation(summary = "End a tour — leader only")
     public ResponseEntity<EndTourResponse> endTour(@Valid @RequestBody EndTourRequest request) {
         EndTourResponse response = tourService.endTour(request);
-        // Broadcast AFTER the @Transactional service method returns (transaction committed).
-        broadcaster.broadcastTourEnded(request.tourId());
+        // Broadcast AFTER @Transactional commits — both SSE and WebSocket channels.
+        broadcaster.broadcastTourEnded(request.tourId());   // SSE
+        wsHandler.broadcastTourEnded(request.tourId());     // WebSocket
         return ResponseEntity.ok(response);
     }
 
