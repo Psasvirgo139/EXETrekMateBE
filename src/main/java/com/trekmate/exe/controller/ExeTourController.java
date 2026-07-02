@@ -11,6 +11,7 @@ import com.trekmate.exe.service.ExeTourService;
 import com.trekmate.exe.sse.TourEventBroadcaster;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -61,7 +62,12 @@ public class ExeTourController {
     @GetMapping(value = "/{tourId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Subscribe to tour events (SSE)",
                description = "Streams member_update and tour_ended events. Keeps connection alive until tour ends.")
-    public SseEmitter subscribeToEvents(@PathVariable String tourId) {
+    public SseEmitter subscribeToEvents(@PathVariable String tourId, HttpServletResponse response) {
+        // Disable nginx buffering on Render so events are delivered immediately
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache, no-store");
+        response.setHeader("Connection", "keep-alive");
+
         MemberListResponse currentState = tourService.getMembers(tourId);
         SseEmitter emitter = broadcaster.register(tourId);
 

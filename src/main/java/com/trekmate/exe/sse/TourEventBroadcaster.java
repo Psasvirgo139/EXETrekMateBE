@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import org.springframework.scheduling.annotation.Scheduled;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +86,30 @@ public class TourEventBroadcaster {
             list.removeAll(dead);
             log.debug("SSE removed {} dead emitters for tourId={}", dead.size(), tourId);
         }
+    }
+
+    /**
+     * Send a heartbeat comment to every active emitter every 25 seconds.
+     * This prevents Render's nginx reverse proxy (55s idle timeout) from
+     * closing the connection, and helps detect dead clients faster.
+     */
+    @Scheduled(fixedDelay = 25_000)
+    public void sendHeartbeats() {
+        if (registry.isEmpty()) return;
+        registry.forEach((tourId, list) -> {
+            List<SseEmitter> dead = new ArrayList<>();
+            for (SseEmitter emitter : list) {
+                try {
+                    emitter.send(SseEmitter.event().comment("heartbeat"));
+                } catch (IOException e) {
+                    dead.add(emitter);
+                }
+            }
+            if (!dead.isEmpty()) {
+                list.removeAll(dead);
+                log.debug("Heartbeat removed {} dead emitters for tourId={}", dead.size(), tourId);
+            }
+        });
     }
 
     private void remove(String tourId, SseEmitter emitter) {
