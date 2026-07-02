@@ -8,6 +8,7 @@ import com.trekmate.exe.model.ExeTourMember;
 import com.trekmate.exe.model.ExeTourSession;
 import com.trekmate.exe.repository.ExeTourMemberRepository;
 import com.trekmate.exe.repository.ExeTourSessionRepository;
+import com.trekmate.exe.sse.TourEventBroadcaster;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,7 @@ public class ExeTourServiceImpl implements ExeTourService {
 
     private final ExeTourSessionRepository sessionRepo;
     private final ExeTourMemberRepository memberRepo;
+    private final TourEventBroadcaster broadcaster;
 
     @Override
     @Transactional
@@ -85,6 +87,9 @@ public class ExeTourServiceImpl implements ExeTourService {
 
         log.info("Tour joined: tourId={} userId={}", session.getTourId(), request.userId());
 
+        // Push updated member list to all devices currently subscribed to this tour
+        broadcaster.broadcastMemberUpdate(session.getTourId(), new MemberListResponse(memberDtos));
+
         return new JoinTourResponse(
                 session.getTourId(),
                 session.getGroupId(),
@@ -110,6 +115,9 @@ public class ExeTourServiceImpl implements ExeTourService {
         sessionRepo.save(session);
 
         log.info("Tour ended: tourId={} leader={}", request.tourId(), request.leaderId());
+
+        // Push tour_ended event — all subscribed devices will clear their local tour
+        broadcaster.broadcastTourEnded(request.tourId());
 
         return new EndTourResponse(true, "Tour ended successfully");
     }
