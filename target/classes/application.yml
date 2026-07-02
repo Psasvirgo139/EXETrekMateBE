@@ -1,12 +1,12 @@
 server:
-  port: 8081
+  port: ${PORT:8080}
 
 spring:
   application:
     name: trekmate-exe-backend
 
   datasource:
-    url: jdbc:h2:mem:exetrekmate;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:file:/tmp/exetrekmate;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -18,7 +18,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
