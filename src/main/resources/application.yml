@@ -6,10 +6,9 @@ spring:
     name: trekmate-exe-backend
 
   datasource:
-    # Supports direct URL environment variables: SPRING_DATASOURCE_URL, DATABASE_URL, or JDBC_DATABASE_URL
-    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:${JDBC_DATABASE_URL:jdbc:postgresql://localhost:5432/trekmate}}}
-    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:}}
+    url: ${DATABASE_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
