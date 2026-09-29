@@ -12,11 +12,13 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final TourWebSocketHandler tourWebSocketHandler;
+    private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry
                 .addHandler(tourWebSocketHandler, "/exe/tours/{tourId}/ws")
+                .addInterceptors(jwtHandshakeInterceptor)
                 .setAllowedOrigins("*");
     }
 }

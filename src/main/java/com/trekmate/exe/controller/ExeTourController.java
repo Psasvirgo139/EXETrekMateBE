@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,14 +28,20 @@ public class ExeTourController {
 
     @PostMapping
     @Operation(summary = "Create a new tour")
-    public ResponseEntity<CreateTourResponse> createTour(@Valid @RequestBody CreateTourRequest request) {
-        return ResponseEntity.ok(tourService.createTour(request));
+    public ResponseEntity<CreateTourResponse> createTour(
+            @Valid @RequestBody(required = false) CreateTourRequest request,
+            Authentication auth) {
+        String leaderId = (String) auth.getPrincipal();
+        return ResponseEntity.ok(tourService.createTour(new CreateTourRequest(leaderId)));
     }
 
     @PostMapping("/join")
     @Operation(summary = "Join an existing tour")
-    public ResponseEntity<JoinTourResponse> joinTour(@Valid @RequestBody JoinTourRequest request) {
-        JoinTourResponse response = tourService.joinTour(request);
+    public ResponseEntity<JoinTourResponse> joinTour(
+            @Valid @RequestBody JoinTourRequest request,
+            Authentication auth) {
+        String userId = (String) auth.getPrincipal();
+        JoinTourResponse response = tourService.joinTour(new JoinTourRequest(userId, request.joinCode()));
         // Broadcast AFTER @Transactional commits — WebSocket channel.
         MemberListResponse memberList = new MemberListResponse(response.members());
         wsHandler.broadcastMemberUpdate(response.tourId(), memberList);    // WebSocket
@@ -43,8 +50,11 @@ public class ExeTourController {
 
     @PostMapping("/end")
     @Operation(summary = "End a tour — leader only")
-    public ResponseEntity<EndTourResponse> endTour(@Valid @RequestBody EndTourRequest request) {
-        EndTourResponse response = tourService.endTour(request);
+    public ResponseEntity<EndTourResponse> endTour(
+            @Valid @RequestBody EndTourRequest request,
+            Authentication auth) {
+        String leaderId = (String) auth.getPrincipal();
+        EndTourResponse response = tourService.endTour(new EndTourRequest(request.tourId(), leaderId));
         // Broadcast AFTER @Transactional commits — WebSocket channel.
         wsHandler.broadcastTourEnded(request.tourId());     // WebSocket
         return ResponseEntity.ok(response);
