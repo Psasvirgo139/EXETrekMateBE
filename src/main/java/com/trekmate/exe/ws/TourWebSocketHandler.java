@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trekmate.exe.dto.response.MemberListResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -91,28 +90,6 @@ public class TourWebSocketHandler extends TextWebSocketHandler {
         }
         List<WebSocketSession> list = sessions.remove(tourId);
         if (list != null) list.forEach(s -> closeQuietly(s, CloseStatus.NORMAL));
-    }
-
-    // ── Heartbeat (keep-alive through Cloudflare 55s idle timeout) ───────────
-
-    @Scheduled(fixedDelay = 25_000)
-    public void sendHeartbeats() {
-        if (sessions.isEmpty()) return;
-        sessions.forEach((tourId, list) -> {
-            List<WebSocketSession> dead = new ArrayList<>();
-            for (WebSocketSession s : list) {
-                try {
-                    if (s.isOpen()) s.sendMessage(new TextMessage("{\"type\":\"heartbeat\"}"));
-                    else dead.add(s);
-                } catch (IOException e) {
-                    dead.add(s);
-                }
-            }
-            if (!dead.isEmpty()) {
-                list.removeAll(dead);
-                log.debug("WS heartbeat pruned {} dead session(s) for tourId={}", dead.size(), tourId);
-            }
-        });
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
