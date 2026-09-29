@@ -32,7 +32,8 @@ public class ExeTourController {
             @Valid @RequestBody(required = false) CreateTourRequest request,
             Authentication auth) {
         String leaderId = (String) auth.getPrincipal();
-        return ResponseEntity.ok(tourService.createTour(new CreateTourRequest(leaderId)));
+        String displayName = request != null ? request.displayName() : null;
+        return ResponseEntity.ok(tourService.createTour(new CreateTourRequest(leaderId, displayName)));
     }
 
     @PostMapping("/join")
@@ -41,7 +42,7 @@ public class ExeTourController {
             @Valid @RequestBody JoinTourRequest request,
             Authentication auth) {
         String userId = (String) auth.getPrincipal();
-        JoinTourResponse response = tourService.joinTour(new JoinTourRequest(userId, request.joinCode()));
+        JoinTourResponse response = tourService.joinTour(new JoinTourRequest(userId, request.displayName(), request.joinCode()));
         // Broadcast AFTER @Transactional commits — WebSocket channel.
         MemberListResponse memberList = new MemberListResponse(response.members());
         wsHandler.broadcastMemberUpdate(response.tourId(), memberList);    // WebSocket

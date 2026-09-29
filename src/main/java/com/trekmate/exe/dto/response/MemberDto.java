@@ -11,6 +11,9 @@ public record MemberDto(
         @JsonProperty("user_id")
         String userId,
 
+        @JsonProperty("display_name")
+        String displayName,
+
         @JsonProperty("is_leader")
         boolean isLeader
 ) {}

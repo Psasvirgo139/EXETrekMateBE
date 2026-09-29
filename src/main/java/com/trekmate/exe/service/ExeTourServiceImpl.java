@@ -50,6 +50,7 @@ public class ExeTourServiceImpl implements ExeTourService {
         ExeTourMember leaderMember = ExeTourMember.builder()
                 .session(session)
                 .userId(request.leaderId())
+                .displayName(request.displayName())
                 .isLeader(true)
                 .build();
 
@@ -73,6 +74,7 @@ public class ExeTourServiceImpl implements ExeTourService {
             ExeTourMember newMember = ExeTourMember.builder()
                     .session(session)
                     .userId(request.userId())
+                    .displayName(request.displayName())
                     .isLeader(false)
                     .build();
             memberRepo.save(newMember);
@@ -80,7 +82,7 @@ public class ExeTourServiceImpl implements ExeTourService {
         }
 
         List<MemberDto> memberDtos = session.getMembers().stream()
-                .map(m -> new MemberDto(m.getUserId(), m.isLeader()))
+                .map(m -> new MemberDto(m.getUserId(), m.getDisplayName(), m.isLeader()))
                 .toList();
 
         log.info("Tour joined: tourId={} userId={}", session.getTourId(), request.userId());
@@ -122,7 +124,7 @@ public class ExeTourServiceImpl implements ExeTourService {
                         HttpStatus.NOT_FOUND, "No active tour found with id: " + tourId));
 
         List<MemberDto> members = session.getMembers().stream()
-                .map(m -> new MemberDto(m.getUserId(), m.isLeader()))
+                .map(m -> new MemberDto(m.getUserId(), m.getDisplayName(), m.isLeader()))
                 .toList();
 
         return new MemberListResponse(members);

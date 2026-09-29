@@ -12,5 +12,12 @@ public record CreateTourRequest(
         @JsonProperty("leader_id")
         @NotBlank(message = "leader_id is required")
         @Size(max = 16, message = "leader_id must be at most 16 characters")
-        String leaderId
-) {}
+        String leaderId,
+
+        @JsonProperty("display_name")
+        String displayName
+) {
+    public CreateTourRequest(String leaderId) {
+        this(leaderId, null);
+    }
+}

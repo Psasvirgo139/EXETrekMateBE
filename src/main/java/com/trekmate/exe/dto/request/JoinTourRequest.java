@@ -14,7 +14,14 @@ public record JoinTourRequest(
         @Size(max = 16, message = "user_id must be at most 16 characters")
         String userId,
 
+        @JsonProperty("display_name")
+        String displayName,
+
         @JsonProperty("join_code")
         @NotBlank(message = "join_code is required")
         String joinCode
-) {}
+) {
+    public JoinTourRequest(String userId, String joinCode) {
+        this(userId, null, joinCode);
+    }
+}

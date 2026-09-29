@@ -31,6 +31,9 @@ public class ExeTourMember {
     @Column(name = "user_id", nullable = false, length = 16)
     private String userId;
 
+    @Column(name = "display_name")
+    private String displayName;
+
     @Column(name = "is_leader", nullable = false)
     private boolean isLeader;
 }
