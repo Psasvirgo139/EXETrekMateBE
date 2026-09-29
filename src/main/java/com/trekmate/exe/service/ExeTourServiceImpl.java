@@ -79,6 +79,14 @@ public class ExeTourServiceImpl implements ExeTourService {
                     .build();
             memberRepo.save(newMember);
             session.getMembers().add(newMember);
+        } else if (request.displayName() != null && !request.displayName().isBlank()) {
+            session.getMembers().stream()
+                    .filter(m -> m.getUserId().equals(request.userId()))
+                    .findFirst()
+                    .ifPresent(m -> {
+                        m.setDisplayName(request.displayName());
+                        memberRepo.save(m);
+                    });
         }
 
         List<MemberDto> memberDtos = session.getMembers().stream()

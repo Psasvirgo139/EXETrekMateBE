@@ -70,7 +70,15 @@ public class TourWebSocketHandler extends TextWebSocketHandler {
     public void broadcastMemberUpdate(String tourId, MemberListResponse response) {
         try {
             List<Map<String, Object>> memberList = response.members().stream()
-                    .map(m -> Map.<String, Object>of("user_id", m.userId(), "is_leader", m.isLeader()))
+                    .map(m -> {
+                        Map<String, Object> map = new java.util.HashMap<>();
+                        map.put("user_id", m.userId());
+                        if (m.displayName() != null) {
+                            map.put("display_name", m.displayName());
+                        }
+                        map.put("is_leader", m.isLeader());
+                        return map;
+                    })
                     .toList();
             String json = objectMapper.writeValueAsString(
                     Map.of("type", "member_update", "members", memberList));
